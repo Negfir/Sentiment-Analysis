@@ -11,6 +11,8 @@ import os
 import time
 
 import sklearn
+from nltk.corpus import stopwords
+from sklearn.feature_extraction.text import TfidfTransformer
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.svm import LinearSVC
 from sklearn.pipeline import Pipeline
@@ -24,6 +26,7 @@ from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.metrics import confusion_matrix
 import nltk
 import nltk
+from sklearn.ensemble import RandomForestClassifier
 from nltk.tokenize import word_tokenize
 from sklearn.model_selection import train_test_split
 #from sklearn.cross_validation import train_test_split
@@ -86,13 +89,17 @@ if __name__ == '__main__':
 
 
 
-    vectorizer = CountVectorizer(min_df=5,tokenizer=nltk.word_tokenize,max_df = 0.9,
+    vectorizer = CountVectorizer(min_df=2,max_df = 0.7,
         analyzer='word',
-        lowercase=False,
+        lowercase=False
     )
     features = vectorizer.fit_transform(
         data
     )
+
+    TFvectorizer = TfidfTransformer()
+    TFfeatures = TFvectorizer.fit_transform(features)
+
     features_nd = features.toarray()  # for easy usage
 
     X_train, X_test, y_train, y_test = train_test_split(
@@ -106,6 +113,7 @@ if __name__ == '__main__':
     #log_model = LogisticRegression()
     log_model = MultinomialNB()
     #log_model=svm.SVC(kernel='linear')
+    #log_model = RandomForestClassifier(n_estimators=200, random_state=0)
     t0 = time.time()
     log_model = log_model.fit(X=X_train, y=y_train)
     t1 = time.time()
