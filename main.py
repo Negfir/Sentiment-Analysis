@@ -6,21 +6,31 @@
 
 
 import sys
+import sys
+import os
+import time
+
+import sklearn
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.svm import LinearSVC
 from sklearn.pipeline import Pipeline
 from sklearn.model_selection import GridSearchCV
 from sklearn.datasets import load_files
 from sklearn.model_selection import train_test_split
-from sklearn import metrics
+from sklearn.metrics import accuracy_score
+from sklearn import metrics, svm
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.metrics import confusion_matrix
 import nltk
 import nltk
 from nltk.tokenize import word_tokenize
 from sklearn.model_selection import train_test_split
-
+#from sklearn.cross_validation import train_test_split
+from nltk.stem import PorterStemmer
+from nltk.tokenize import word_tokenize
 from nltk import word_tokenize,sent_tokenize
+from sklearn.naive_bayes import MultinomialNB
 if __name__ == '__main__':
     #Raw data is converted to seperate files for each comment, inorder to read them easily
     # file_neg = open('./rt-polaritydata/rt-polaritydata/rt-polarity.neg')
@@ -43,54 +53,81 @@ if __name__ == '__main__':
     #     f2.write(comment)
     #     cnt += 1
 
-    movie_reviews_data_folder = './comments'
-    dataset = load_files(movie_reviews_data_folder, shuffle=False)
-    print("n_samples: %d" % len(dataset.data))
-    print(dataset.data[0][1:10])
+    data = []
+    data_labels = []
+    with open("./rt-polaritydata/rt-polaritydata/rt-polarity.neg") as f:
+        for i in f:
+            data.append(i.strip("\n"))
+            #print(i)
+            data_labels.append('pos')
 
-    #docs_train, docs_test, y_train, y_test = train_test_split(dataset.data, dataset.target,test_size=0.20, random_state=12)
+    with open("./rt-polaritydata/rt-polaritydata/rt-polarity.pos") as f:
+        for i in f:
+            data.append(i.strip("\n"))
+            data_labels.append('neg')
 
-    count_vect = CountVectorizer()
-    X_train_counts = count_vect.fit_transform(dataset.data)
-    print(X_train_counts.shape)
-    print(count_vect.vocabulary_.get('hi'))
+    # x_train, x_test, y_train, y_test = train_test_split(data, data_labels, test_size=0.20, random_state=12)
+    # movieVectorizer = CountVectorizer(min_df=2,tokenizer=nltk.word_tokenize,max_df = 1.0, analyzer='word', lowercase=False)
+    #
+    # features = movieVectorizer.fit_transform(data)
+    # x_test_counts=docs_test_counts = movieVectorizer.transform(x_test)
+    # print(movieVectorizer.vocabulary_.get("the"))
+    # features_nd = features.toarray()  # for easy usage
+    # print(features.shape)
+    # print(y_train.shape)
+    #
+    #
+    #
+    # clf = MultinomialNB()
+    # clf.fit(features, y_train)
+    #
+    # y_pred = clf.predict(x_test_counts)
+    # print(sklearn.metrics.accuracy_score(y_test, y_pred))
 
-    docs_train, docs_test, y_train, y_test = train_test_split(
-        dataset.data, dataset.target, test_size=0.25, random_state=None)
 
-    # TASK: Build a vectorizer / classifier pipeline that filters out tokens
-    # that are too rare or too frequent
-    pipeline = Pipeline([
-        ('vect', TfidfVectorizer(min_df=3, max_df=0.95)),
-        ('clf', LinearSVC(C=1000)),
-    ])
 
-    # TASK: Build a grid search to find out whether unigrams or bigrams are
-    # more useful.
-    # Fit the pipeline on the training set using grid search for the parameters
-    parameters = {
-        'vect__ngram_range': [(1, 1), (1, 2)],
-    }
-    grid_search = GridSearchCV(pipeline, parameters, n_jobs=-1)
-    grid_search.fit(docs_train, y_train)
+    vectorizer = CountVectorizer(min_df=5,tokenizer=nltk.word_tokenize,max_df = 0.9,
+        analyzer='word',
+        lowercase=False,
+    )
+    features = vectorizer.fit_transform(
+        data
+    )
+    features_nd = features.toarray()  # for easy usage
 
-    # TASK: print the mean and std for each candidate along with the parameter
-    # settings for all the candidates explored by grid search.
-    n_candidates = len(grid_search.cv_results_['params'])
-    for i in range(n_candidates):
-        print(i, 'params - %s; mean - %0.2f; std - %0.2f'
-                 % (grid_search.cv_results_['params'][i],
-                    grid_search.cv_results_['mean_test_score'][i],
-                    grid_search.cv_results_['std_test_score'][i]))
+    X_train, X_test, y_train, y_test = train_test_split(
+        features_nd,
+        data_labels,
+        train_size=0.80,
+        random_state=1234)
 
-    # TASK: Predict the outcome on the testing set and store it in a variable
-    # named y_predicted
-    y_predicted = grid_search.predict(docs_test)
+    from sklearn.linear_model import LogisticRegression
 
-    # Print the classification report
-    print(metrics.classification_report(y_test, y_predicted,
-                                        target_names=dataset.target_names))
+    #log_model = LogisticRegression()
+    log_model = MultinomialNB()
+    #log_model=svm.SVC(kernel='linear')
+    t0 = time.time()
+    log_model = log_model.fit(X=X_train, y=y_train)
+    t1 = time.time()
+    y_pred = log_model.predict(X_test)
+    t2 = time.time()
+    time_train = t1 - t0
+    time_predict = t2 - t1
+    # import random
+    #
+    # j = random.randint(0, len(X_test) - 7)
+    # for i in range(j, j + 7):
+    #     print(y_pred[0])
+    #     ind = features_nd.tolist().index(X_test[i].tolist())
+    #     print(data[ind].strip())
 
-    # Print and plot the confusion matrix
-    cm = metrics.confusion_matrix(y_test, y_predicted)
+    print("Training time: %fs; Prediction time: %fs" % (time_train, time_predict))
+
+    print(accuracy_score(y_test, y_pred))
+    print(metrics.classification_report(y_test, y_pred))
+    cm = confusion_matrix(y_test, y_pred)
     print(cm)
+
+
+
+
