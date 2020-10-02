@@ -15,9 +15,17 @@ from nltk import tokenize
 from nltk.stem import *
 from nltk.tokenize import word_tokenize
 import sklearn
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.naive_bayes import GaussianNB
+from sklearn.ensemble import RandomForestClassifier, StackingClassifier
+from sklearn.metrics import accuracy_score, f1_score, log_loss
+from sklearn.model_selection import train_test_split, KFold, cross_val_score
+from sklearn.ensemble import VotingClassifier
+from sklearn.ensemble import BaggingClassifier
 from nltk.corpus import stopwords
 from sklearn.feature_extraction.text import TfidfTransformer
 from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.preprocessing import Normalizer
 from sklearn.svm import *
 from sklearn.pipeline import Pipeline
 from sklearn.model_selection import GridSearchCV
@@ -30,6 +38,7 @@ from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.metrics import confusion_matrix
 import nltk
 import nltk
+from sklearn.decomposition import PCA, TruncatedSVD
 from sklearn.neural_network import MLPClassifier
 from sklearn.ensemble import RandomForestClassifier
 from nltk.tokenize import word_tokenize
@@ -89,10 +98,13 @@ if __name__ == '__main__':
         text = "".join([ch for ch in text if (ch not in string.punctuation and ch not in string.digits)])
         tokens = nltk.word_tokenize(text)
         #stems = stem_tokens(tokens, stemmer)
-
+        # for i in tokens:
+        #     if i not in stops:
+        #         lemma = lemma_tokens(tokens, lemmatizer)
         lemma = lemma_tokens(tokens, lemmatizer)
         #posTag = nltk.pos_tag(lemma)
         return lemma
+
 
 
     X_train, X_test, y_train, y_test = train_test_split(
@@ -101,7 +113,7 @@ if __name__ == '__main__':
         train_size=0.80,
         random_state=1234)
 
-    vectorizer = CountVectorizer(min_df=2,max_df = 0.5,
+    vectorizer = CountVectorizer(min_df=2,max_df = 0.6,
         analyzer='word',
         lowercase=False,tokenizer=tokenize
     )
@@ -115,15 +127,17 @@ if __name__ == '__main__':
     TFfeatures_train = TFvectorizer.fit_transform(features_train)
     TFfeatures_test = TFvectorizer.transform(features_test)
 
+
   #  features_nd = TFfeatures.toarray()  # for easy usage
     #print(vectorizer.vocabulary_)
 
 
     from sklearn.linear_model import LogisticRegression
 
+    #log_model = KNeighborsClassifier(n_neighbors=1)
     #log_model = LogisticRegression()
     #log_model = MultinomialNB(alpha=0.85,fit_prior=True, class_prior=None)
-    log_model = BernoulliNB(alpha=0.85)
+    #log_model = BernoulliNB(alpha=0.85)
     #log_model = MLPClassifier(hidden_layer_sizes=(500,)) #0.73
     #log_model = DecisionTreeClassifier() #0.63 very bad
 
@@ -131,49 +145,65 @@ if __name__ == '__main__':
     #log_model=svm.LinearSVC(C=1.0, tol=0.0001, max_iter=1000, penalty='l2', loss='squared_hinge', dual=True, multi_class='ovr', fit_intercept=True, intercept_scaling=1)
     #log_model = RandomForestClassifier(n_estimators=200, random_state=0) #0.71
 
-    tuned_parameters = [{'alpha': [0.0, 0.1, 0.2, 0.3,0.4,0.5,0.6,0.7,0.8,0.9]}]
-
-    scores = ['precision', 'recall']
-
-    for score in scores:
-        print("# Tuning hyper-parameters for %s" % score)
-        print()
-
-        clf = GridSearchCV(
-            BernoulliNB(), tuned_parameters, scoring='%s_macro' % score
-        )
-        clf.fit(TFfeatures_train, y_train)
-
-        print("Best parameters set found on development set:")
-        print()
-        print(clf.best_params_)
-        print()
-        print("Grid scores on development set:")
-        print()
-        means = clf.cv_results_['mean_test_score']
-        stds = clf.cv_results_['std_test_score']
-        for mean, std, params in zip(means, stds, clf.cv_results_['params']):
-            print("%0.3f (+/-%0.03f) for %r"
-                  % (mean, std * 2, params))
-        print()
-
-        print("Detailed classification report:")
-        print()
-        print("The model is trained on the full development set.")
-        print("The scores are computed on the full evaluation set.")
-        print()
-        y_true, y_pred = y_test, clf.predict(TFfeatures_test)
-        print(classification_report(y_true, y_pred))
-        print()
+    # tuned_parameters = [{'alpha': [0.0, 0.1, 0.2, 0.3,0.4,0.5,0.6,0.7,0.8,0.9]}]
+    #
+    # scores = ['precision', 'recall']
+    #
+    # for score in scores:
+    #     print("# Tuning hyper-parameters for %s" % score)
+    #     print()
+    #
+    #     clf = GridSearchCV(
+    #         BernoulliNB(), tuned_parameters, scoring='%s_macro' % score
+    #     )
+    #     clf.fit(TFfeatures_train, y_train)
+    #
+    #     print("Best parameters set found on development set:")
+    #     print()
+    #     print(clf.best_params_)
+    #     print()
+    #     print("Grid scores on development set:")
+    #     print()
+    #     means = clf.cv_results_['mean_test_score']
+    #     stds = clf.cv_results_['std_test_score']
+    #     for mean, std, params in zip(means, stds, clf.cv_results_['params']):
+    #         print("%0.3f (+/-%0.03f) for %r"
+    #               % (mean, std * 2, params))
+    #     print()
+    #
+    #     print("Detailed classification report:")
+    #     print()
+    #     print("The model is trained on the full development set.")
+    #     print("The scores are computed on the full evaluation set.")
+    #     print()
+    #     y_true, y_pred = y_test, clf.predict(TFfeatures_test)
+    #     print(classification_report(y_true, y_pred))
+    #     print()
 
 
     # t0 = time.time()
-    # log_model = log_model.fit(X=TFfeatures_train, y=y_train)
+    # log_model = log_model.fit(X=features_train, y=y_train)
     # t1 = time.time()
-    # y_pred = log_model.predict(TFfeatures_test)
+    # y_pred = log_model.predict(features_test)
     # t2 = time.time()
     # time_train = t1 - t0
     # time_predict = t2 - t1
+
+    LogReg_clf = LogisticRegression(max_iter=2000)
+    DTree_clf = MultinomialNB(alpha=0.8,fit_prior=True, class_prior=None)
+    SVC_clf = BernoulliNB(alpha=0.8)
+    #voting_clf = VotingClassifier(estimators=[('DTree', DTree_clf), ('LogReg', LogReg_clf), ('nb', SVC_clf)],voting='soft')
+    voting_clf = StackingClassifier(estimators=[('DTree', DTree_clf), ('LogReg', LogReg_clf), ('nb', SVC_clf)])
+    voting_clf.fit(features_train, y_train)
+    preds = voting_clf.predict(features_test)
+    acc = accuracy_score(y_test, preds)
+    acc2 = metrics.classification_report(y_test, preds)
+    print(acc) #0.762
+    print(acc2) #0.79
+
+    # print("Accuracy is: " + str(acc))
+    # print("Log Loss is: " + str(l_loss))
+    # print("F1 Score is: " + str(f1))
     #
     #
     #
