@@ -52,39 +52,59 @@ from sklearn.tree import *
 from nltk.stem import WordNetLemmatizer
 from nltk import word_tokenize
 from nltk.stem.porter import PorterStemmer
+import string
+from nltk.corpus import wordnet
+from sklearn.linear_model import LogisticRegression
+
 
 if __name__ == '__main__':
-    #Raw data is converted to seperate files for each comment, inorder to read them easily
-
-
-
+    # Reading Files
     data = []
     data_labels = []
-    with open("./rt-polaritydata/rt-polaritydata/rt-polarity.neg") as f:
+    with open("./rt-polaritydata/rt-polarity.neg",encoding="ISO-8859-1") as f:
         for i in f:
             data.append(i.strip("\n"))
             #print(i)
             data_labels.append('pos')
 
-    with open("./rt-polaritydata/rt-polaritydata/rt-polarity.pos") as f:
+    with open("./rt-polaritydata/rt-polarity.pos",encoding="ISO-8859-1") as f:
         for i in f:
             data.append(i.strip("\n"))
             data_labels.append('neg')
 
 
-    print(data[8])
-
-    print(data[89])
-
-    import string
 
     stemmer = PorterStemmer()
     lemmatizer = WordNetLemmatizer()
 
+
+    #spliting train set and test+dev set
+    X_train, X_test, y_train, y_test = train_test_split(
+        data,
+        data_labels,
+        train_size=0.80,
+        random_state=1234)
+    #spliting test set and dev set
+    X_dev, X_test, y_dev, y_test = train_test_split(
+        X_test,
+        y_test,
+        train_size=0.50,
+        random_state=4321)
+
     def lemma_tokens(tokens, lemmatizer):
         lemma = []
-        for item in tokens:
-            lemma.append(lemmatizer.lemmatize(item))
+        # for item in tokens:
+        #     word = tokens[0]
+        #     word_pos = tokens[1]
+        #     lemma.append(lemmatizer.lemmatize(word,pos=word_pos))
+        # return lemma
+        for word, tag in tokens:
+            if tag is None:
+                # if there is no available tag, append the token as is
+                lemma.append(word)
+            else:
+                # else use the tag to lemmatize the token
+                lemma.append(lemmatizer.lemmatize(word, tag))
         return lemma
 
     def stem_tokens(tokens, stemmer):
@@ -93,26 +113,34 @@ if __name__ == '__main__':
             stemmed.append(stemmer.stem(item))
         return stemmed
 
+
+    def nltk_tag_to_wordnet_tag(nltk_tag):
+        if nltk_tag.startswith('J'):
+            return wordnet.ADJ
+        elif nltk_tag.startswith('V'):
+            return wordnet.VERB
+        elif nltk_tag.startswith('N'):
+            return wordnet.NOUN
+        elif nltk_tag.startswith('R'):
+            return wordnet.ADV
+        else:
+            return None
+
     def tokenize(text):
         stops = set(stopwords.words("english"))
         text = "".join([ch for ch in text if (ch not in string.punctuation and ch not in string.digits)])
         tokens = nltk.word_tokenize(text)
-        #stems = stem_tokens(tokens, stemmer)
         # for i in tokens:
         #     if i not in stops:
-        #         lemma = lemma_tokens(tokens, lemmatizer)
-        lemma = lemma_tokens(tokens, lemmatizer)
-        #posTag = nltk.pos_tag(lemma)
+        #         posTag = nltk.pos_tag(tokens)
+        posTag = nltk.pos_tag(tokens)
+        wordnet_tagged = map(lambda x: (x[0], nltk_tag_to_wordnet_tag(x[1])), posTag)
+
+        lemma = lemma_tokens(wordnet_tagged, lemmatizer)
+        #p
         return lemma
 
-
-
-    X_train, X_test, y_train, y_test = train_test_split(
-        data,
-        data_labels,
-        train_size=0.80,
-        random_state=1234)
-
+    #verctorizing and feature extraction
     vectorizer = CountVectorizer(min_df=2,max_df = 0.6,
         analyzer='word',
         lowercase=False,tokenizer=tokenize
@@ -123,27 +151,55 @@ if __name__ == '__main__':
     features_test = vectorizer.transform(
         X_test
     )
-    TFvectorizer = TfidfTransformer()
-    TFfeatures_train = TFvectorizer.fit_transform(features_train)
-    TFfeatures_test = TFvectorizer.transform(features_test)
+    features_dev = vectorizer.transform(
+        X_dev
+    )
+    # TFvectorizer = TfidfTransformer()
+    # features_train = TFvectorizer.fit_transform(features_train)
+    # features_test = TFvectorizer.transform(features_test)
 
 
-  #  features_nd = TFfeatures.toarray()  # for easy usage
-    #print(vectorizer.vocabulary_)
 
 
-    from sklearn.linear_model import LogisticRegression
 
-    #log_model = KNeighborsClassifier(n_neighbors=1)
-    #log_model = LogisticRegression()
-    #log_model = MultinomialNB(alpha=0.85,fit_prior=True, class_prior=None)
-    #log_model = BernoulliNB(alpha=0.85)
-    #log_model = MLPClassifier(hidden_layer_sizes=(500,)) #0.73
-    #log_model = DecisionTreeClassifier() #0.63 very bad
+    final_clf = LogisticRegression(max_iter=2000)
+    clf2 = svm.SVC(kernel='linear')
+    final_clf = MultinomialNB(alpha=0.8,fit_prior=True, class_prior=None)
+    clf5 = BernoulliNB(alpha=0.8)
 
-    #log_model=svm.SVC(kernel='linear')
-    #log_model=svm.LinearSVC(C=1.0, tol=0.0001, max_iter=1000, penalty='l2', loss='squared_hinge', dual=True, multi_class='ovr', fit_intercept=True, intercept_scaling=1)
-    #log_model = RandomForestClassifier(n_estimators=200, random_state=0) #0.71
+    clf5 = KNeighborsClassifier(n_neighbors=1)
+    clf6 = MLPClassifier(hidden_layer_sizes=(500,)) #0.73
+    clf8 = RandomForestClassifier(n_estimators=200, random_state=0)  # 0.71
+    clf9=svm.LinearSVC(C=1.0, tol=0.0001, max_iter=1000, penalty='l2', loss='squared_hinge', dual=True, multi_class='ovr', fit_intercept=True, intercept_scaling=1)
+
+
+
+
+
+    # t0 = time.time()
+    # log_model = clf4.fit(features_train, y_train)
+    # t1 = time.time()
+    # y_pred = log_model.predict(features_test)
+    # t2 = time.time()
+    # time_train = t1 - t0
+    # time_predict = t2 - t1
+
+    LogReg_clf = LogisticRegression(max_iter=2000)
+    NB1_clf = MultinomialNB(alpha=0.8,fit_prior=True, class_prior=None)
+    NB2_clf = BernoulliNB(alpha=0.8)
+    # #voting_clf = VotingClassifier(estimators=[('DTree', DTree_clf), ('LogReg', LogReg_clf), ('nb', SVC_clf)],voting='soft')
+    final_clf = StackingClassifier(estimators=[('DTree', LogReg_clf), ('nb1', NB1_clf), ('nb', NB2_clf)])
+    #
+    final_clf.fit(features_train, y_train)
+    preds = final_clf.predict(features_test)
+
+    print(accuracy_score(y_test, preds)) #0.762
+    print(metrics.classification_report(y_test, preds)) #0.79
+    cm = confusion_matrix(y_test, preds)
+    print(cm)
+
+
+
 
     # tuned_parameters = [{'alpha': [0.0, 0.1, 0.2, 0.3,0.4,0.5,0.6,0.7,0.8,0.9]}]
     #
@@ -169,7 +225,6 @@ if __name__ == '__main__':
     #     for mean, std, params in zip(means, stds, clf.cv_results_['params']):
     #         print("%0.3f (+/-%0.03f) for %r"
     #               % (mean, std * 2, params))
-    #     print()
     #
     #     print("Detailed classification report:")
     #     print()
@@ -179,41 +234,3 @@ if __name__ == '__main__':
     #     y_true, y_pred = y_test, clf.predict(TFfeatures_test)
     #     print(classification_report(y_true, y_pred))
     #     print()
-
-
-    # t0 = time.time()
-    # log_model = log_model.fit(X=features_train, y=y_train)
-    # t1 = time.time()
-    # y_pred = log_model.predict(features_test)
-    # t2 = time.time()
-    # time_train = t1 - t0
-    # time_predict = t2 - t1
-
-    LogReg_clf = LogisticRegression(max_iter=2000)
-    DTree_clf = MultinomialNB(alpha=0.8,fit_prior=True, class_prior=None)
-    SVC_clf = BernoulliNB(alpha=0.8)
-    #voting_clf = VotingClassifier(estimators=[('DTree', DTree_clf), ('LogReg', LogReg_clf), ('nb', SVC_clf)],voting='soft')
-    voting_clf = StackingClassifier(estimators=[('DTree', DTree_clf), ('LogReg', LogReg_clf), ('nb', SVC_clf)])
-    voting_clf.fit(features_train, y_train)
-    preds = voting_clf.predict(features_test)
-    acc = accuracy_score(y_test, preds)
-    acc2 = metrics.classification_report(y_test, preds)
-    print(acc) #0.762
-    print(acc2) #0.79
-
-    # print("Accuracy is: " + str(acc))
-    # print("Log Loss is: " + str(l_loss))
-    # print("F1 Score is: " + str(f1))
-    #
-    #
-    #
-    # print("Training time: %fs; Prediction time: %fs" % (time_train, time_predict))
-    #
-    # print(accuracy_score(y_test, y_pred))
-    # print(metrics.classification_report(y_test, y_pred))
-    # cm = confusion_matrix(y_test, y_pred)
-    # print(cm)
-
-
-
-
