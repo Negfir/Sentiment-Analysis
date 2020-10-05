@@ -74,6 +74,204 @@ if __name__ == '__main__':
 
 
 
+
+
+    def lemma_tokens(tokens, lemmatizer):
+        lemma = []
+        for word, tag in tokens:
+            if tag is None:
+                # if there is no available tag, append the token as is
+                lemma.append(word)
+            else:
+                # else use the tag to lemmatize the token
+                lemma.append(lemmatizer.lemmatize(word, tag))
+        return lemma
+
+    def stem_tokens(tokens, stemmer):
+        stemmed = []
+        for item in tokens:
+            stemmed.append(stemmer.stem(item))
+        return stemmed
+
+
+    # function to convert nltk tag to wordnet tag
+    def nltk_tag_to_wordnet_tag(nltk_tag):
+        if nltk_tag.startswith('J'):
+            return wordnet.ADJ
+        elif nltk_tag.startswith('V'):
+            return wordnet.VERB
+        elif nltk_tag.startswith('N'):
+            return wordnet.NOUN
+        elif nltk_tag.startswith('R'):
+            return wordnet.ADV
+        else:
+            return None
+
+    def tokenize(text):
+        stops = set(stopwords.words("english"))
+        text = "".join([ch for ch in text if (ch not in string.punctuation and ch not in string.digits)])
+        tokens = nltk.word_tokenize(text)
+        for i in tokens:
+            if i not in stops:
+                posTag = nltk.pos_tag(tokens)
+        # posTag = nltk.pos_tag(tokens)
+        wordnet_tagged = map(lambda x: (x[0], nltk_tag_to_wordnet_tag(x[1])), posTag)
+
+        lemma = lemma_tokens(wordnet_tagged, lemmatizer)
+        return lemma
+
+
+    def LogisticReg(features_train,features_test,y_train,y_test):
+        clf = LogisticRegression(max_iter=2000)
+        clf.fit(features_train, y_train)
+        preds = clf.predict(features_test)
+
+        print("Performance of Logistic Regression Classifier:")
+        print("Accuracy:" , accuracy_score(y_test, preds))
+        print(classification_report(y_test, preds))
+        print("Confusion Matrix:")
+        print(confusion_matrix(y_test, preds))
+
+    def SVM_linear(features_train,features_test,y_train,y_test):
+        clf = svm.SVC(kernel='linear', C=0.1, gamma='auto')
+        clf.fit(features_train, y_train)
+        preds = clf.predict(features_test)
+
+        print("Performance of SVM Classifier:")
+        print("Accuracy:" , accuracy_score(y_test, preds))
+        print(classification_report(y_test, preds))
+        print("Confusion Matrix:")
+        print(confusion_matrix(y_test, preds))
+
+    def NaiveBayes_Bernoulli(features_train,features_test,y_train,y_test):
+        Normalize = Normalizer()
+        features_train = Normalize.fit_transform(features_train)
+        features_test = Normalize.transform(features_test)
+
+        clf = BernoulliNB(alpha=0.8,fit_prior=True, class_prior=None)
+        clf.fit(features_train, y_train)
+        preds = clf.predict(features_test)
+
+        print("Performance of NaiveBayes Bernoulli Classifier:")
+        print("Accuracy:" , accuracy_score(y_test, preds))
+        print(classification_report(y_test, preds))
+        print("Confusion Matrix:")
+        print(confusion_matrix(y_test, preds))
+
+    def NaiveBayes_Multinomial(features_train,features_test,y_train,y_test):
+        Normalize = Normalizer()
+        features_train = Normalize.fit_transform(features_train)
+        features_test = Normalize.transform(features_test)
+
+        clf = MultinomialNB(alpha=0.8,fit_prior=True, class_prior=None)
+        clf.fit(features_train, y_train)
+        preds = clf.predict(features_test)
+
+        print("Performance of NaiveBayes Multinomial Classifier:")
+        print("Accuracy:" , accuracy_score(y_test, preds))
+        print(classification_report(y_test, preds))
+        print("Confusion Matrix:")
+        print(confusion_matrix(y_test, preds))
+
+    def fourthClassifier(features_train, features_test, y_train, y_test):
+        Normalize = Normalizer()
+        features_train = Normalize.fit_transform(features_train)
+        features_test = Normalize.transform(features_test)
+
+        LogReg_clf = LogisticRegression(max_iter=2000, C=1.0)
+        NB1_clf = MultinomialNB(alpha=0.8,fit_prior=True, class_prior=None)
+        NB2_clf = BernoulliNB(alpha=0.8, fit_prior=True, class_prior=None)
+
+        final_clf = VotingClassifier(estimators=[('LogReg', LogReg_clf), ('nb1', NB1_clf), ('nb2', NB2_clf)],voting='soft')
+        final_clf.fit(features_train, y_train)
+        preds = final_clf.predict(features_test)
+
+        print("Performance of Fourth Classifier:")
+        print("Accuracy:" , accuracy_score(y_test, preds))
+        print(classification_report(y_test, preds))
+        print("Confusion Matrix:")
+        print(confusion_matrix(y_test, preds))
+
+    def Random_Baseline(features_train, features_test, y_train, y_test):
+
+        final_clf = sklearn.dummy.DummyClassifier(strategy='uniform')
+        final_clf.fit(features_train, y_train)
+        preds = final_clf.predict(features_test)
+
+        print("Performance of Fourth Classifier:")
+        print("Accuracy:" , accuracy_score(y_test, preds))
+        print(classification_report(y_test, preds))
+        print("Confusion Matrix:")
+        print(confusion_matrix(y_test, preds))
+
+
+    def Tune_NaiveBayes(features_train, y_train):
+        tuned_parameters = [{'alpha': [0.5,0.55,0.6,0.65,0.7,0.75,0.8,0.85,0.9,0.95]}]
+
+        scores = ['precision', 'recall']
+
+        for score in scores:
+            clf = GridSearchCV(
+                BernoulliNB(), tuned_parameters, scoring='%s_macro' % score
+            )
+            clf.fit(features_train, y_train)
+
+            print("Best parameters set found on development set:")
+            print(clf.best_params_)
+            print()
+            print("Grid scores on development set:")
+            print()
+            means = clf.cv_results_['mean_test_score']
+            stds = clf.cv_results_['std_test_score']
+            for mean, std, params in zip(means, stds, clf.cv_results_['params']):
+                print("%0.3f (+/-%0.03f) for %r"
+                      % (mean, std * 2, params))
+
+    def Tune_LogReg(features_train, y_train):
+        tuned_parameters = [{'C': [0.001, 0.01, 0.1, 1, 10, 100, 1000] }]
+
+        scores = ['precision', 'recall']
+
+        for score in scores:
+            clf = GridSearchCV(
+                LogisticRegression(max_iter=500), tuned_parameters, scoring='%s_macro' % score
+            )
+            clf.fit(features_train, y_train)
+
+            print("Best parameters set found on development set:")
+            print(clf.best_params_)
+            print()
+            print("Grid scores on development set:")
+            print()
+            means = clf.cv_results_['mean_test_score']
+            stds = clf.cv_results_['std_test_score']
+            for mean, std, params in zip(means, stds, clf.cv_results_['params']):
+                print("%0.3f (+/-%0.03f) for %r"
+                      % (mean, std * 2, params))
+
+    def Tune_SVM(features_train, y_train):
+        tuned_parameters = [{'C': [ 0.001, 0.01, 0.1, 1, 10] }, {'gamma' : ['scale', 'auto']}]
+
+        scores = ['precision', 'recall']
+
+        for score in scores:
+            clf = GridSearchCV(
+                svm.SVC(kernel='linear'), tuned_parameters, scoring='%s_macro' % score
+            )
+            clf.fit(features_train, y_train)
+
+            print("Best parameters set found on development set:")
+            print(clf.best_params_)
+            print()
+            print("Grid scores on development set:")
+            print()
+            means = clf.cv_results_['mean_test_score']
+            stds = clf.cv_results_['std_test_score']
+            for mean, std, params in zip(means, stds, clf.cv_results_['params']):
+                print("%0.3f (+/-%0.03f) for %r"
+                      % (mean, std * 2, params))
+
+
     stemmer = PorterStemmer()
     lemmatizer = WordNetLemmatizer()
 
@@ -91,146 +289,23 @@ if __name__ == '__main__':
         train_size=0.50,
         random_state=4321)
 
-    def lemma_tokens(tokens, lemmatizer):
-        lemma = []
-        # for item in tokens:
-        #     word = tokens[0]
-        #     word_pos = tokens[1]
-        #     lemma.append(lemmatizer.lemmatize(word,pos=word_pos))
-        # return lemma
-        for word, tag in tokens:
-            if tag is None:
-                # if there is no available tag, append the token as is
-                lemma.append(word)
-            else:
-                # else use the tag to lemmatize the token
-                lemma.append(lemmatizer.lemmatize(word, tag))
-        return lemma
-
-    def stem_tokens(tokens, stemmer):
-        stemmed = []
-        for item in tokens:
-            stemmed.append(stemmer.stem(item))
-        return stemmed
-
-
-    def nltk_tag_to_wordnet_tag(nltk_tag):
-        if nltk_tag.startswith('J'):
-            return wordnet.ADJ
-        elif nltk_tag.startswith('V'):
-            return wordnet.VERB
-        elif nltk_tag.startswith('N'):
-            return wordnet.NOUN
-        elif nltk_tag.startswith('R'):
-            return wordnet.ADV
-        else:
-            return None
-
-    def tokenize(text):
-        stops = set(stopwords.words("english"))
-        text = "".join([ch for ch in text if (ch not in string.punctuation and ch not in string.digits)])
-        tokens = nltk.word_tokenize(text)
-        # for i in tokens:
-        #     if i not in stops:
-        #         posTag = nltk.pos_tag(tokens)
-        posTag = nltk.pos_tag(tokens)
-        wordnet_tagged = map(lambda x: (x[0], nltk_tag_to_wordnet_tag(x[1])), posTag)
-
-        lemma = lemma_tokens(wordnet_tagged, lemmatizer)
-        #p
-        return lemma
 
     #verctorizing and feature extraction
-    vectorizer = CountVectorizer(min_df=2,max_df = 0.6,
-        analyzer='word',
-        lowercase=False,tokenizer=tokenize
-    )
-    features_train = vectorizer.fit_transform(
-        X_train
-    )
-    features_test = vectorizer.transform(
-        X_test
-    )
-    features_dev = vectorizer.transform(
-        X_dev
-    )
-    # TFvectorizer = TfidfTransformer()
-    # features_train = TFvectorizer.fit_transform(features_train)
-    # features_test = TFvectorizer.transform(features_test)
+    vectorizer = CountVectorizer(min_df=2,max_df = 0.7, analyzer='word', lowercase=False,tokenizer=tokenize)
+
+    features_train = vectorizer.fit_transform(X_train)
+    features_test = vectorizer.transform(X_test)
+    features_dev = vectorizer.transform(X_dev)
 
 
+    """ These function can be uncommented to change the classifier """
+    # Random_Baseline(features_train, features_test, y_train, y_test)
+    # Tune_LogReg(features_train, y_train)
+    # LogisticReg(features_train, features_test, y_train, y_test)
+    # Tune_SVM(features_train, y_train)
+    # SVM_linear(features_train, features_test, y_train, y_test)
+    # Tune_NaiveBayes(features_train, y_train)
+    # NaiveBayes_Bernoulli(features_train, features_test, y_train, y_test)
+    # NaiveBayes_Multinomial(features_train, features_test, y_train, y_test)
 
-
-
-    final_clf = LogisticRegression(max_iter=2000)
-    clf2 = svm.SVC(kernel='linear')
-    final_clf = MultinomialNB(alpha=0.8,fit_prior=True, class_prior=None)
-    clf5 = BernoulliNB(alpha=0.8)
-
-    clf5 = KNeighborsClassifier(n_neighbors=1)
-    clf6 = MLPClassifier(hidden_layer_sizes=(500,)) #0.73
-    clf8 = RandomForestClassifier(n_estimators=200, random_state=0)  # 0.71
-    clf9=svm.LinearSVC(C=1.0, tol=0.0001, max_iter=1000, penalty='l2', loss='squared_hinge', dual=True, multi_class='ovr', fit_intercept=True, intercept_scaling=1)
-
-
-
-
-
-    # t0 = time.time()
-    # log_model = clf4.fit(features_train, y_train)
-    # t1 = time.time()
-    # y_pred = log_model.predict(features_test)
-    # t2 = time.time()
-    # time_train = t1 - t0
-    # time_predict = t2 - t1
-
-    LogReg_clf = LogisticRegression(max_iter=2000)
-    NB1_clf = MultinomialNB(alpha=0.8,fit_prior=True, class_prior=None)
-    NB2_clf = BernoulliNB(alpha=0.8)
-    # #voting_clf = VotingClassifier(estimators=[('DTree', DTree_clf), ('LogReg', LogReg_clf), ('nb', SVC_clf)],voting='soft')
-    final_clf = StackingClassifier(estimators=[('DTree', LogReg_clf), ('nb1', NB1_clf), ('nb', NB2_clf)])
-    #
-    final_clf.fit(features_train, y_train)
-    preds = final_clf.predict(features_test)
-
-    print(accuracy_score(y_test, preds)) #0.762
-    print(metrics.classification_report(y_test, preds)) #0.79
-    cm = confusion_matrix(y_test, preds)
-    print(cm)
-
-
-
-
-    # tuned_parameters = [{'alpha': [0.0, 0.1, 0.2, 0.3,0.4,0.5,0.6,0.7,0.8,0.9]}]
-    #
-    # scores = ['precision', 'recall']
-    #
-    # for score in scores:
-    #     print("# Tuning hyper-parameters for %s" % score)
-    #     print()
-    #
-    #     clf = GridSearchCV(
-    #         BernoulliNB(), tuned_parameters, scoring='%s_macro' % score
-    #     )
-    #     clf.fit(TFfeatures_train, y_train)
-    #
-    #     print("Best parameters set found on development set:")
-    #     print()
-    #     print(clf.best_params_)
-    #     print()
-    #     print("Grid scores on development set:")
-    #     print()
-    #     means = clf.cv_results_['mean_test_score']
-    #     stds = clf.cv_results_['std_test_score']
-    #     for mean, std, params in zip(means, stds, clf.cv_results_['params']):
-    #         print("%0.3f (+/-%0.03f) for %r"
-    #               % (mean, std * 2, params))
-    #
-    #     print("Detailed classification report:")
-    #     print()
-    #     print("The model is trained on the full development set.")
-    #     print("The scores are computed on the full evaluation set.")
-    #     print()
-    #     y_true, y_pred = y_test, clf.predict(TFfeatures_test)
-    #     print(classification_report(y_true, y_pred))
-    #     print()
+    fourthClassifier(features_train, features_test, y_train, y_test)
