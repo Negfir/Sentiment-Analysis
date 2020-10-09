@@ -1,60 +1,29 @@
-# This is a sample Python script.
 
-# Press ⌃R to execute it or replace it with your code.
-# Press Double ⇧ to search everywhere for classes, files, tool windows, actions, and settings.
-
-
-
-import sys
 import sys
 import os
 import time
 
-import numpy as np
-from nltk import tokenize
 from nltk.stem import *
-from nltk.tokenize import word_tokenize
 import sklearn
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.naive_bayes import GaussianNB
-from sklearn.ensemble import RandomForestClassifier, StackingClassifier
-from sklearn.metrics import accuracy_score, f1_score, log_loss
-from sklearn.model_selection import train_test_split, KFold, cross_val_score
 from sklearn.ensemble import VotingClassifier
-from sklearn.ensemble import BaggingClassifier
 from nltk.corpus import stopwords
 from sklearn.feature_extraction.text import TfidfTransformer
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.preprocessing import Normalizer
-from sklearn.svm import *
-from sklearn.pipeline import Pipeline
 from sklearn.model_selection import GridSearchCV
-from sklearn.datasets import load_files
-from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, classification_report
 from sklearn import metrics, svm
 from sklearn.feature_extraction.text import CountVectorizer
-from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.metrics import confusion_matrix
 import nltk
-import nltk
-from sklearn.decomposition import PCA, TruncatedSVD
-from sklearn.neural_network import MLPClassifier
-from sklearn.ensemble import RandomForestClassifier
-from nltk.tokenize import word_tokenize
 from sklearn.model_selection import train_test_split
-#from sklearn.cross_validation import train_test_split
-from nltk.stem import PorterStemmer
-from nltk.tokenize import word_tokenize
-from nltk import word_tokenize,sent_tokenize
 from sklearn.naive_bayes import *
-from sklearn.tree import *
 from nltk.stem import WordNetLemmatizer
-from nltk import word_tokenize
 from nltk.stem.porter import PorterStemmer
 import string
 from nltk.corpus import wordnet
 from sklearn.linear_model import LogisticRegression
+
 
 
 if __name__ == '__main__':
@@ -198,7 +167,7 @@ if __name__ == '__main__':
         final_clf.fit(features_train, y_train)
         preds = final_clf.predict(features_test)
 
-        print("Performance of Fourth Classifier:")
+        print("Performance of Random Classifier:")
         print("Accuracy:" , accuracy_score(y_test, preds))
         print(classification_report(y_test, preds))
         print("Confusion Matrix:")
@@ -299,6 +268,7 @@ if __name__ == '__main__':
 
 
     """ These function can be uncommented to change the classifier """
+
     # Random_Baseline(features_train, features_test, y_train, y_test)
     # Tune_LogReg(features_train, y_train)
     # LogisticReg(features_train, features_test, y_train, y_test)
